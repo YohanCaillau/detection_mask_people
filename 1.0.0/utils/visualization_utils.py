@@ -174,11 +174,11 @@ def draw_bounding_box_on_image_array(current_frame_number, image,
       coordinates as absolute.
   """
   image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
-  is_person_detected, csv_line, update_csv = draw_bounding_box_on_image(current_frame_number,image_pil, ymin, xmin, ymax, xmax, color,
+  is_person_detected, json_line, update_json = draw_bounding_box_on_image(current_frame_number,image_pil, ymin, xmin, ymax, xmax, color,
                              thickness, display_str_list,
                              use_normalized_coordinates)
   np.copyto(image, np.array(image_pil))
-  return is_person_detected, csv_line, update_csv
+  return is_person_detected, json_line, update_json
 
 def draw_bounding_box_on_image(current_frame_number,image,
                                ymin,
@@ -210,8 +210,8 @@ def draw_bounding_box_on_image(current_frame_number,image,
       ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
       coordinates as absolute.
   """
-  csv_line = "" # to create new csv line consists of person, predicted_speed, color and predicted_direction
-  update_csv = False # update csv for a new person that are passed from ROI - just one new line for each person
+  json_line = "" # to create new json line consists of person, predicted_speed, color and predicted_direction
+  update_json = False # update json for a new person that are passed from ROI - just one new line for each person
   is_person_detected = [0]
   draw = ImageDraw.Draw(image)
   im_width, im_height = image.size
@@ -230,9 +230,9 @@ def draw_bounding_box_on_image(current_frame_number,image,
 
   '''if(bottom > ROI_POSITION): # if the person get in ROI area, person predicted_speed predicted_color algorithms are called - 200 is an arbitrary value, for my case it looks very well to set position of ROI line at y pixel 200'''
   if(x_axis[0] == 1):
-    predicted_direction, is_person_detected, update_csv = object_counter_x_axis.count_objects_x_axis(top, bottom, right, left, detected_person_image, ROI_POSITION[0], ROI_POSITION[0]+DEVIATION[0], ROI_POSITION[0]+(DEVIATION[0]*2), DEVIATION[0])
+    predicted_direction, is_person_detected, update_json = object_counter_x_axis.count_objects_x_axis(top, bottom, right, left, detected_person_image, ROI_POSITION[0], ROI_POSITION[0]+DEVIATION[0], ROI_POSITION[0]+(DEVIATION[0]*2), DEVIATION[0])
   elif(mode_number[0] == 2):
-    predicted_direction, is_person_detected, update_csv = object_counter.count_objects(top, bottom, right, left, detected_person_image, ROI_POSITION[0], ROI_POSITION[0]+DEVIATION[0], ROI_POSITION[0]+(DEVIATION[0]*2), DEVIATION[0])
+    predicted_direction, is_person_detected, update_json = object_counter.count_objects(top, bottom, right, left, detected_person_image, ROI_POSITION[0], ROI_POSITION[0]+DEVIATION[0], ROI_POSITION[0]+(DEVIATION[0]*2), DEVIATION[0])
 
   if(1 in is_color_recognition_enable):
     predicted_color = color_recognition_api.color_recognition(detected_person_image)    
@@ -247,10 +247,10 @@ def draw_bounding_box_on_image(current_frame_number,image,
   # instead of above.
   if(1 in is_color_recognition_enable):
     display_str_list[0] = predicted_color + " " + display_str_list[0]
-    csv_line = predicted_color + "," + str (predicted_direction) # csv line created
+    json_line = predicted_color + "," + str (predicted_direction) # json line created
   else:
     display_str_list[0] = display_str_list[0]
-    csv_line = str (predicted_direction) # csv line created
+    json_line = str (predicted_direction) # json line created
   
   display_str_heights = [font.getsize(ds)[1] for ds in display_str_list]
 
@@ -276,7 +276,7 @@ def draw_bounding_box_on_image(current_frame_number,image,
         fill='black',
         font=font)
     text_bottom -= text_height - 2 * margin
-    return is_person_detected, csv_line, update_csv
+    return is_person_detected, json_line, update_json
 
 
 def draw_bounding_boxes_on_image_array(image,
@@ -521,7 +521,7 @@ def visualize_boxes_and_labels_on_image_array(current_frame_number,
   """
   # Create a display string (and color) for every box location, group any boxes
   # that correspond to the same location.
-  csv_line_util = "not_available"
+  json_line_util = "not_available"
   counter = 0
   ROI_POSITION.insert(0,y_reference)
   DEVIATION.insert(0,deviation)
@@ -584,7 +584,7 @@ def visualize_boxes_and_labels_on_image_array(current_frame_number,
             if instance_masks is not None:
               draw_mask_on_image_array(image, box_to_instance_masks_map[box], color=color)
         
-            is_person_detected, csv_line, update_csv = draw_bounding_box_on_image_array(current_frame_number,
+            is_person_detected, json_line, update_json = draw_bounding_box_on_image_array(current_frame_number,
                 image,
                 ymin,
                 xmin,
@@ -607,7 +607,7 @@ def visualize_boxes_and_labels_on_image_array(current_frame_number,
             if instance_masks is not None:
               draw_mask_on_image_array(image, box_to_instance_masks_map[box], color=color)
 
-            is_person_detected, csv_line, update_csv = draw_bounding_box_on_image_array(current_frame_number,
+            is_person_detected, json_line, update_json = draw_bounding_box_on_image_array(current_frame_number,
                 image,
                 ymin,
                 xmin,
@@ -630,17 +630,17 @@ def visualize_boxes_and_labels_on_image_array(current_frame_number,
         counter = 1
         del is_person_detected[:]
         is_person_detected = []        
-        csv_line_util = class_name + "," + csv_line 
+        json_line_util = class_name + "," + json_line 
 
   if(mode == 1):
     counting_mode = counting_mode.replace("['", " ").replace("']", " ").replace("%", "")
     counting_mode = ''.join([i for i in counting_mode.replace("['", " ").replace("']", " ").replace("%", "") if not i.isdigit()])
     counting_mode = str(custom_string_util.word_count(counting_mode))
     counting_mode = counting_mode.replace("{", "").replace("}", "")
-    return counter, csv_line_util, counting_mode
+    return counter, json_line_util, counting_mode
 
   else:
-    return counter, csv_line_util
+    return counter, json_line_util
 
 def visualize_boxes_and_labels_on_image_array_x_axis(current_frame_number,
                                               image,
@@ -696,7 +696,7 @@ def visualize_boxes_and_labels_on_image_array_x_axis(current_frame_number,
   """
   # Create a display string (and color) for every box location, group any boxes
   # that correspond to the same location.
-  csv_line_util = "not_available"
+  json_line_util = "not_available"
   counter = 0
   ROI_POSITION.insert(0,x_reference)
   DEVIATION.insert(0,deviation)
@@ -760,7 +760,7 @@ def visualize_boxes_and_labels_on_image_array_x_axis(current_frame_number,
             if instance_masks is not None:
               draw_mask_on_image_array(image, box_to_instance_masks_map[box], color=color)
         
-            is_person_detected, csv_line, update_csv = draw_bounding_box_on_image_array(current_frame_number,
+            is_person_detected, json_line, update_json = draw_bounding_box_on_image_array(current_frame_number,
                 image,
                 ymin,
                 xmin,
@@ -783,7 +783,7 @@ def visualize_boxes_and_labels_on_image_array_x_axis(current_frame_number,
             if instance_masks is not None:
               draw_mask_on_image_array(image, box_to_instance_masks_map[box], color=color)
 
-            is_person_detected, csv_line, update_csv = draw_bounding_box_on_image_array(current_frame_number,
+            is_person_detected, json_line, update_json = draw_bounding_box_on_image_array(current_frame_number,
                 image,
                 ymin,
                 xmin,
@@ -806,7 +806,7 @@ def visualize_boxes_and_labels_on_image_array_x_axis(current_frame_number,
         counter = 1
         del is_person_detected[:]
         is_person_detected = []        
-        csv_line_util = class_name + "," + csv_line 
+        json_line_util = class_name + "," + json_line 
 
   if(mode == 1):
     counting_mode = counting_mode.replace("['", " ").replace("']", " ").replace("%", "")
@@ -814,10 +814,10 @@ def visualize_boxes_and_labels_on_image_array_x_axis(current_frame_number,
     counting_mode = str(custom_string_util.word_count(counting_mode))
     counting_mode = counting_mode.replace("{", "").replace("}", "")
 
-    return counter, csv_line_util, counting_mode
+    return counter, json_line_util, counting_mode
 
   else:
-    return counter, csv_line_util
+    return counter, json_line_util
 
 def visualize_boxes_and_labels_on_image_array_y_axis(current_frame_number,
                                               image,
@@ -873,7 +873,7 @@ def visualize_boxes_and_labels_on_image_array_y_axis(current_frame_number,
   """
   # Create a display string (and color) for every box location, group any boxes
   # that correspond to the same location.
-  csv_line_util = "not_available"
+  json_line_util = "not_available"
   counter = 0
   ROI_POSITION.insert(0,y_reference)
   DEVIATION.insert(0,deviation)
@@ -936,7 +936,7 @@ def visualize_boxes_and_labels_on_image_array_y_axis(current_frame_number,
 	    if instance_masks is not None:
 	      draw_mask_on_image_array(image, box_to_instance_masks_map[box], color=color)
 	
-	    is_person_detected, csv_line, update_csv = draw_bounding_box_on_image_array(current_frame_number,
+	    is_person_detected, json_line, update_json = draw_bounding_box_on_image_array(current_frame_number,
 	        image,
 	        ymin,
 	        xmin,
@@ -959,7 +959,7 @@ def visualize_boxes_and_labels_on_image_array_y_axis(current_frame_number,
 	    if instance_masks is not None:
 	      draw_mask_on_image_array(image, box_to_instance_masks_map[box], color=color)
 
-	    is_person_detected, csv_line, update_csv = draw_bounding_box_on_image_array(current_frame_number,
+	    is_person_detected, json_line, update_json = draw_bounding_box_on_image_array(current_frame_number,
 	        image,
 	        ymin,
 	        xmin,
@@ -982,7 +982,7 @@ def visualize_boxes_and_labels_on_image_array_y_axis(current_frame_number,
         counter = 1
         del is_person_detected[:]
         is_person_detected = []                
-        csv_line_util = class_name + "," + csv_line 
+        json_line_util = class_name + "," + json_line 
 
   if(mode == 2):
     counting_mode = counting_mode.replace("['", " ").replace("']", " ").replace("%", "")
@@ -990,10 +990,10 @@ def visualize_boxes_and_labels_on_image_array_y_axis(current_frame_number,
     counting_mode = str(custom_string_util.word_count(counting_mode))
     counting_mode = counting_mode.replace("{", "").replace("}", "")
 
-    return counter, csv_line_util, counting_mode
+    return counter, json_line_util, counting_mode
 
   else:
-    return counter, csv_line_util
+    return counter, json_line_util
 
 def visualize_boxes_and_labels_on_image_array_tracker(
     image,
@@ -1183,7 +1183,7 @@ def visualize_boxes_and_labels_on_single_image_array(current_frame_number,
   """
   # Create a display string (and color) for every box location, group any boxes
   # that correspond to the same location.
-  csv_line_util = "not_available"
+  json_line_util = "not_available"
   counter = 0
   ROI_POSITION.insert(0,y_reference)
   DEVIATION.insert(0,deviation)
@@ -1246,7 +1246,7 @@ def visualize_boxes_and_labels_on_single_image_array(current_frame_number,
             if instance_masks is not None:
               draw_mask_on_image_array(image, box_to_instance_masks_map[box], color=color)
         
-            is_person_detected, csv_line, update_csv = draw_bounding_box_on_image_array(current_frame_number,
+            is_person_detected, json_line, update_json = draw_bounding_box_on_image_array(current_frame_number,
                 image,
                 ymin,
                 xmin,
@@ -1269,7 +1269,7 @@ def visualize_boxes_and_labels_on_single_image_array(current_frame_number,
             if instance_masks is not None:
               draw_mask_on_image_array(image, box_to_instance_masks_map[box], color=color)
 
-            is_person_detected, csv_line, update_csv = draw_bounding_box_on_image_array(current_frame_number,
+            is_person_detected, json_line, update_json = draw_bounding_box_on_image_array(current_frame_number,
                 image,
                 ymin,
                 xmin,
@@ -1292,7 +1292,7 @@ def visualize_boxes_and_labels_on_single_image_array(current_frame_number,
         counter = 1
         del is_person_detected[:]
         is_person_detected = []        
-        csv_line_util = class_name + "," + csv_line 
+        json_line_util = class_name + "," + json_line 
 
   if(mode == 1):
     counting_mode = counting_mode.replace("['", " ").replace("']", " ").replace("%", "")
@@ -1300,10 +1300,10 @@ def visualize_boxes_and_labels_on_single_image_array(current_frame_number,
     counting_mode = str(custom_string_util.word_count(counting_mode))
     counting_mode = counting_mode.replace("{", "").replace("}", "")
 
-    return counter, csv_line_util, counting_mode
+    return counter, json_line_util, counting_mode
 
   else:
-    return counter, csv_line_util
+    return counter, json_line_util
 
 def add_cdf_image_summary(values, name):
   """Adds a tf.summary.image for a CDF plot of the values.

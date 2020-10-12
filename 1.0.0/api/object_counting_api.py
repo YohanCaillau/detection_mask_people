@@ -5,16 +5,21 @@
 #----------------------------------------------
 
 import tensorflow as tf
-import csv
 import cv2
 import numpy as np
+import json
+from time import gmtime, strftime
 from utils import visualization_utils as vis_util
 
 # Variables
-total_passed_vehicle = 0  # using it to count vehicles
+total_passed_person = 0  # using it to count people
 
 def cumulative_object_counting_x_axis(input_video, detection_graph, category_index, is_color_recognition_enabled, roi, deviation):
-        total_passed_vehicle = 0              
+        total_passed_person = 0              
+
+        # initialize .json
+        with open("pedestrian_measurement.json", mode='w', encoding='utf-8') as file:
+            json.dump([], file)
 
         # input video
         cap = cv2.VideoCapture(0)
@@ -26,11 +31,8 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         output_movie = cv2.VideoWriter('the_output.avi', fourcc, fps, (width, height))
 
-        total_passed_vehicle = 0
-        speed = "waiting..."
+        total_passed_person = 0
         direction = "waiting..."
-        size = "waiting..."
-        color = "waiting..."
         counting_mode = "..."
         width_heigh_taken = True
         with detection_graph.as_default():
@@ -69,7 +71,7 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
                 font = cv2.FONT_HERSHEY_SIMPLEX
 
                 # Visualization of the results of a detection.        
-                counter, csv_line, counting_mode = vis_util.visualize_boxes_and_labels_on_image_array_x_axis(cap.get(1),
+                counter, json_line, counting_mode = vis_util.visualize_boxes_and_labels_on_image_array_x_axis(cap.get(1),
                                                                                                              input_frame,
                                                                                                              1,
                                                                                                              is_color_recognition_enabled,
@@ -82,19 +84,19 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
                                                                                                              use_normalized_coordinates=True,
                                                                                                              line_thickness=4)
                                
-                # when the vehicle passed over line and counted, make the color of ROI line green
+                # when the person passed over line and counted, make the color of ROI line green
                 if counter == 1:
                   cv2.line(input_frame, (roi, 0), (roi, height), (0, 0xFF, 0), 5)
                 else:
                   cv2.line(input_frame, (roi, 0), (roi, height), (0, 0, 0xFF), 5)
 
-                total_passed_vehicle = total_passed_vehicle + counter
+                total_passed_person = total_passed_person + counter
 
                 # insert information text to video frame
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(
                     input_frame,
-                    'Detected Pedestrians: ' + str(total_passed_vehicle),
+                    'Detected Pedestrians: ' + str(total_passed_pedestrian),
                     (10, 35),
                     font,
                     0.8,
@@ -102,7 +104,6 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
                     2,
                     cv2.FONT_HERSHEY_SIMPLEX,
                     )
-
 
                 cv2.putText(
                     input_frame,
@@ -115,12 +116,55 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
                     cv2.LINE_AA,
                     )
 
+                cv2.putText(
+                    input_frame,
+                    'LAST PASSED PERSON INFO',
+                    (11, 290),
+                    font,
+                    0.5,
+                    (0xFF, 0xFF, 0xFF),
+                    1,
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    )
+
+                cv2.putText(
+                    input_frame,
+                    '-Movement Direction: ' + str(direction),
+                    (14, 302),
+                    font,
+                    0.4,
+                    (0xFF, 0xFF, 0xFF),
+                    1,
+                    cv2.FONT_HERSHEY_COMPLEX_SMALL,
+                    )
+                
+                cv2.putText(
+                    input_frame,
+                    '-Timestamp: ' + strftime('%Y-%m-%d %H:%M:%S'),
+                    (14, 322),
+                    font,
+                    0.4,
+                    (0xFF, 0xFF, 0xFF),
+                    1,
+                    cv2.FONT_HERSHEY_COMPLEX_SMALL,
+                    )
+
                 output_movie.write(input_frame)
                 print ("writing frame")
                 cv2.imshow('object counting',input_frame)
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
+                
+                with open("pedestrian_measurement.json", mode='r', encoding='utf-8') as feedsjson:
+                    feeds = json.load(feedsjson)
+
+                if json_line != 'not_available':
+                    with open("pedestrian_measurement.json", mode='w', encoding='utf-8') as feedsjson:
+                        Timestamp = strftime('%Y-%m-%d %H:%M:%S')
+                        entry = {'Timestamp': Timestamp, 'Movement Direction': direction}
+                        feeds.append(entry)
+                        json.dump(feeds, feedsjson)
 
             cap.release()
             cv2.destroyAllWindows()
@@ -137,7 +181,7 @@ def targeted_object_counting(input_video, detection_graph, category_index, is_co
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         output_movie = cv2.VideoWriter('the_output.avi', fourcc, fps, (width, height))
 
-        total_passed_vehicle = 0
+        total_passed_person = 0
         speed = "waiting..."
         direction = "waiting..."
         size = "waiting..."
@@ -182,7 +226,7 @@ def targeted_object_counting(input_video, detection_graph, category_index, is_co
                 font = cv2.FONT_HERSHEY_SIMPLEX
 
                 # Visualization of the results of a detection.        
-                counter, csv_line, the_result = vis_util.visualize_boxes_and_labels_on_image_array(cap.get(1),
+                counter, json_line, the_result = vis_util.visualize_boxes_and_labels_on_image_array(cap.get(1),
                                                                                                       input_frame,
                                                                                                       1,
                                                                                                       is_color_recognition_enabled,
