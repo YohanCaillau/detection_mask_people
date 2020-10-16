@@ -36,8 +36,8 @@ def set_model(model_name, label_name):
 	# Load a (frozen) Tensorflow model into memory.
 	detection_graph = tf.Graph()
 	with detection_graph.as_default():
-	  od_graph_def = tf.GraphDef()
-	  with tf.gfile.GFile(path_to_ckpt, 'rb') as fid:
+	  od_graph_def = tf.compat.v1.GraphDef()
+	  with tf.io.gfile.GFile(path_to_ckpt, 'rb') as fid:
 	    serialized_graph = fid.read()
 	    od_graph_def.ParseFromString(serialized_graph)
 	    tf.import_graph_def(od_graph_def, name='')

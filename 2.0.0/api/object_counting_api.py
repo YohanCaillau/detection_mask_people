@@ -39,7 +39,7 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
         counting_mode = "..."
         width_heigh_taken = True
         with detection_graph.as_default():
-          with tf.Session(graph=detection_graph) as sess:
+          with tf.compat.v1.Session(graph=detection_graph) as sess:
             # Definite input and output Tensors for detection_graph
             image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
 
@@ -51,6 +51,8 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
             detection_scores = detection_graph.get_tensor_by_name('detection_scores:0')
             detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
             num_detections = detection_graph.get_tensor_by_name('num_detections:0')
+
+            mask_model = load_model("C:/Users/utilisateur/Desktop/people_counting_tensorflow/api/mask_recog_ver2.h5")
 
             # for all the frames that are extracted from input video
             while(cap.isOpened()):
@@ -73,40 +75,6 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
                 # insert information text to video frame
                 font = cv2.FONT_HERSHEY_SIMPLEX
 
-                cascPath = "C:/Users/utilisateur/Desktop/people_counting_tensorflow/api/haarcascade_frontalface_alt2.xml"
-                #cascPath = "./haarcascade_frontalface_default.xml"
-                faceCascade = cv2.CascadeClassifier(cascPath)
-                mask_model = load_model("C:/Users/utilisateur/Desktop/people_counting_tensorflow/api/mask_recog_ver2.h5")
-
-
-                gray = cv2.cvtColor(input_frame, cv2.COLOR_BGR2GRAY)
-                faces = faceCascade.detectMultiScale(gray,
-                                                    scaleFactor=1.1,
-                                                    minNeighbors=5,
-                                                    minSize=(60, 60),
-                                                    flags=cv2.CASCADE_SCALE_IMAGE)
-                faces_list=[]
-                preds=[]
-                for (x, y, w, h) in faces:
-                    face_frame = input_frame[y:y+h,x:x+w]
-                    face_frame = cv2.cvtColor(face_frame, cv2.COLOR_BGR2RGB)
-                    face_frame = cv2.resize(face_frame, (224, 224))
-                    face_frame = img_to_array(face_frame)
-                    face_frame = np.expand_dims(face_frame, axis=0)
-                    face_frame =  preprocess_input(face_frame)
-                    faces_list.append(face_frame)
-                    if len(faces_list)>0:
-                        preds = mask_model.predict(faces_list)
-                    for pred in preds:
-                        (mask, withoutMask) = pred
-                    label = "Mask" if mask > withoutMask else "No Mask"
-                    color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
-                    label = "{}: {:.2f}%".format(label, max(mask, withoutMask) * 100)
-                    cv2.putText(frame, label, (x, y- 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 2)
-
-                    cv2.rectangle(frame, (x, y), (x + w, y + h),color, 2)
-
                 # Visualization of the results of a detection.        
                 counter, json_line, counting_mode = vis_util.visualize_boxes_and_labels_on_image_array_x_axis(cap.get(1),
                                                                                                              input_frame,
@@ -128,6 +96,40 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
                   cv2.line(input_frame, (roi, 0), (roi, height), (0, 0, 0xFF), 5)
 
                 total_passed_person = total_passed_person + counter
+
+                cascPath = "C:/Users/utilisateur/Desktop/people_counting_tensorflow/api/haarcascade_frontalface_alt2.xml"
+                #cascPath = "./haarcascade_frontalface_default.xml"
+                faceCascade = cv2.CascadeClassifier(cascPath)
+
+
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = faceCascade.detectMultiScale(gray,
+                                                    scaleFactor=1.1,
+                                                    minNeighbors=5,
+                                                    minSize=(60, 60),
+                                                    flags=cv2.CASCADE_SCALE_IMAGE)
+                
+                faces_list=[]
+                preds=[]
+                for (x, y, w, h) in faces:
+                    face_frame = input_frame[y:y+h,x:x+w]
+                    face_frame = cv2.cvtColor(face_frame, cv2.COLOR_BGR2RGB)
+                    face_frame = cv2.resize(face_frame, (224, 224))
+                    face_frame = img_to_array(face_frame)
+                    face_frame = np.expand_dims(face_frame, axis=0)
+                    face_frame =  preprocess_input(face_frame)
+                    faces_list.append(face_frame)
+                    if len(faces_list)>0:
+                        preds = mask_model.predict(faces_list)
+                    for pred in preds:
+                        (mask, withoutMask) = pred
+                    label = "Mask" if mask > withoutMask else "No Mask"
+                    color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
+                    label = "{}: {:.2f}%".format(label, max(mask, withoutMask) * 100)
+                    cv2.putText(frame, label, (x, y- 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 2)
+
+                    cv2.rectangle(frame, (x, y), (x + w, y + h),color, 2)
 
                 # insert information text to video frame
                 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -199,7 +201,7 @@ def cumulative_object_counting_x_axis(input_video, detection_graph, category_ind
                 if json_line != 'not_available':
                     with open("pedestrian_measurement.json", mode='w', encoding='utf-8') as feedsjson:
                         Timestamp = strftime('%Y-%m-%d %H:%M:%S')
-                        entry = {'Timestamp': Timestamp, 'Movement Direction': direction}
+                        entry = {'Timestamp': Timestamp, 'Movement Direction': direction, 'Masked': label}
                         feeds.append(entry)
                         json.dump(feeds, feedsjson)
 
@@ -228,7 +230,7 @@ def targeted_object_counting(input_video, detection_graph, category_index, is_co
         height = 0
         width = 0
         with detection_graph.as_default():
-          with tf.Session(graph=detection_graph) as sess:
+          with tf.compat.v1.Session(graph=detection_graph) as sess:
             # Definite input and output Tensors for detection_graph
             image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
 
